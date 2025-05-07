@@ -1,0 +1,289 @@
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Location Sharing
+  </title>
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+  <style>
+   body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+ </head>
+ <body class="bg-gray-50 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md">
+   <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+    <h1 class="text-2xl font-semibold text-blue-600 flex items-center">
+     <i class="fas fa-map-marker-alt mr-2">
+     </i>
+     Location Sharing
+    </h1>
+   </div>
+  </header>
+  <main class="flex-grow container mx-auto px-4 py-10 max-w-4xl">
+   <section class="bg-white rounded-lg shadow-md p-6 max-w-xl mx-auto" id="home-section">
+    <h2 class="text-3xl font-semibold text-gray-800 mb-6 flex items-center">
+     <i class="fas fa-link mr-3 text-blue-600">
+     </i>
+     Generate Location Link
+    </h2>
+    <p class="mb-4 text-gray-600">
+     Click the button below to generate a unique link. Share this link with
+     someone to allow them to share their location with you.
+    </p>
+    <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md shadow-md transition focus:outline-none focus:ring-2 focus:ring-blue-600" id="generate-link-btn">
+     Generate Link
+    </button>
+    <div class="mt-6 p-4 bg-gray-100 rounded-md break-words hidden" id="link-container">
+     <p class="text-gray-700">
+      Share this link with the person whose location you want to track:
+     </p>
+     <a class="text-blue-600 underline break-all" href="#" id="share-link" target="_blank">
+     </a>
+    </div>
+   </section>
+   <section class="bg-white rounded-lg shadow-md p-6 max-w-xl mx-auto mt-10 hidden" id="share-location-section">
+    <h2 class="text-3xl font-semibold text-gray-800 mb-6 flex items-center">
+     <i class="fas fa-map-marker-alt mr-3 text-blue-600">
+     </i>
+     Share Your Location
+    </h2>
+    <p class="mb-4 text-gray-600">
+     Click the button below to share your current location. Your location
+     will be sent to the link owner and displayed on their page.
+    </p>
+    <button class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-md shadow-md transition focus:outline-none focus:ring-2 focus:ring-green-600" id="share-location-btn">
+     Share My Location
+    </button>
+    <p class="mt-4 text-red-600 font-semibold hidden" id="share-location-error" role="alert">
+    </p>
+    <p class="mt-4 text-green-600 font-semibold hidden" id="share-location-success" role="alert">
+     Location shared successfully! You can close this page.
+    </p>
+   </section>
+   <section class="bg-white rounded-lg shadow-md p-6 max-w-xl mx-auto mt-10 hidden" id="view-location-section">
+    <h2 class="text-3xl font-semibold text-gray-800 mb-6 flex items-center">
+     <i class="fas fa-location-arrow mr-3 text-blue-600">
+     </i>
+     View Shared Location
+    </h2>
+    <p class="mb-4 text-gray-600" id="waiting-text">
+     Waiting for the person to share their location...
+    </p>
+    <div class="mt-4 bg-gray-100 rounded-md p-4 hidden flex-col space-y-3" id="location-info">
+     <div class="flex items-center space-x-3">
+      <i class="fas fa-map-pin text-red-500 text-xl">
+      </i>
+      <p class="text-gray-700 text-lg" id="latitude">
+       Latitude: N/A
+      </p>
+     </div>
+     <div class="flex items-center space-x-3">
+      <i class="fas fa-map-pin text-green-500 text-xl">
+      </i>
+      <p class="text-gray-700 text-lg" id="longitude">
+       Longitude: N/A
+      </p>
+     </div>
+     <div class="w-full h-64 rounded-md overflow-hidden shadow-inner">
+      <img alt="Placeholder map image showing waiting for location" class="w-full h-full object-cover" height="400" id="map-image" src="https://storage.googleapis.com/a1aa/image/1054d84f-9b72-4f71-d744-ef390c99fde1.jpg" width="600"/>
+     </div>
+    </div>
+    <p class="mt-6 text-red-600 font-semibold hidden" id="view-location-error" role="alert">
+    </p>
+   </section>
+  </main>
+  <footer class="bg-white border-t border-gray-200 py-6 mt-12 text-center text-gray-500 text-sm">
+   Created by Aditya Sarode
+  </footer>
+  <script>
+   // Simple in-memory "database" to simulate location sharing via URL
+    // In real scenario, you'd use a backend or real-time database like Firebase
+    const locationDatabase = {};
+
+    // Utility to generate a random ID
+    function generateId(length = 8) {
+      const chars =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    // Elements
+    const homeSection = document.getElementById('home-section');
+    const shareLocationSection = document.getElementById('share-location-section');
+    const viewLocationSection = document.getElementById('view-location-section');
+
+    const generateLinkBtn = document.getElementById('generate-link-btn');
+    const linkContainer = document.getElementById('link-container');
+    const shareLink = document.getElementById('share-link');
+
+    const shareLocationBtn = document.getElementById('share-location-btn');
+    const shareLocationError = document.getElementById('share-location-error');
+    const shareLocationSuccess = document.getElementById('share-location-success');
+
+    const waitingText = document.getElementById('waiting-text');
+    const locationInfo = document.getElementById('location-info');
+    const latitudeEl = document.getElementById('latitude');
+    const longitudeEl = document.getElementById('longitude');
+    const mapImage = document.getElementById('map-image');
+    const viewLocationError = document.getElementById('view-location-error');
+
+    // Parse URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareId = urlParams.get('share');
+
+    if (shareId) {
+      // If URL has ?share=ID, show share location page
+      homeSection.classList.add('hidden');
+      viewLocationSection.classList.add('hidden');
+      shareLocationSection.classList.remove('hidden');
+
+      shareLocationBtn.addEventListener('click', () => {
+        shareLocationError.classList.add('hidden');
+        shareLocationSuccess.classList.add('hidden');
+
+        if (!navigator.geolocation) {
+          shareLocationError.textContent =
+            'Geolocation is not supported by your browser.';
+          shareLocationError.classList.remove('hidden');
+          return;
+        }
+
+        shareLocationBtn.disabled = true;
+        shareLocationBtn.textContent = 'Sharing...';
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+
+            // Save location in "database"
+            locationDatabase[shareId] = {
+              latitude,
+              longitude,
+              timestamp: Date.now(),
+            };
+
+            shareLocationSuccess.classList.remove('hidden');
+            shareLocationBtn.disabled = false;
+            shareLocationBtn.textContent = 'Share My Location';
+          },
+          (error) => {
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                shareLocationError.textContent =
+                  'Permission denied. Please allow location access.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                shareLocationError.textContent = 'Location information is unavailable.';
+                break;
+              case error.TIMEOUT:
+                shareLocationError.textContent = 'The request to get location timed out.';
+                break;
+              default:
+                shareLocationError.textContent = 'An unknown error occurred.';
+                break;
+            }
+            shareLocationError.classList.remove('hidden');
+            shareLocationBtn.disabled = false;
+            shareLocationBtn.textContent = 'Share My Location';
+          }
+        );
+      });
+    } else if (urlParams.get('view')) {
+      // If URL has ?view=ID, show view location page
+      homeSection.classList.add('hidden');
+      shareLocationSection.classList.add('hidden');
+      viewLocationSection.classList.remove('hidden');
+
+      const viewId = urlParams.get('view');
+
+      // Poll every 3 seconds to check if location is shared
+      const pollInterval = 3000;
+      let poller = null;
+
+      function updateLocation() {
+        const loc = locationDatabase[viewId];
+        if (loc) {
+          waitingText.classList.add('hidden');
+          locationInfo.classList.remove('hidden');
+          latitudeEl.textContent = `Latitude: ${loc.latitude.toFixed(6)}`;
+          longitudeEl.textContent = `Longitude: ${loc.longitude.toFixed(6)}`;
+
+          const mapUrl = `https://placehold.co/600x400/png?text=Map+at+${loc.latitude.toFixed(
+            2
+          )},${loc.longitude.toFixed(2)}&font=roboto&font-size=24&text-color=000000&bg=E0E7FF`;
+
+          mapImage.src = mapUrl;
+          mapImage.alt = `Static map image showing location at latitude ${loc.latitude.toFixed(
+            6
+          )} and longitude ${loc.longitude.toFixed(6)}`;
+
+          clearInterval(poller);
+        }
+      }
+
+      poller = setInterval(updateLocation, pollInterval);
+      updateLocation();
+
+      // Timeout after 2 minutes if no location shared
+      setTimeout(() => {
+        if (!locationDatabase[viewId]) {
+          clearInterval(poller);
+          waitingText.classList.add('hidden');
+          viewLocationError.textContent =
+            'No location shared yet or the link has expired.';
+          viewLocationError.classList.remove('hidden');
+        }
+      }, 120000);
+    } else {
+      // Default: show home section
+      homeSection.classList.remove('hidden');
+      shareLocationSection.classList.add('hidden');
+      viewLocationSection.classList.add('hidden');
+
+      generateLinkBtn.addEventListener('click', () => {
+        const id = generateId();
+        // Create two links:
+        // 1. For the person to share location: current site + ?share=ID
+        // 2. For the viewer to see location: current site + ?view=ID
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?share=${id}`;
+        const viewUrl = `${baseUrl}?view=${id}`;
+
+        // Store empty location for this id
+        locationDatabase[id] = null;
+
+        linkContainer.classList.remove('hidden');
+        shareLink.href = shareUrl;
+        shareLink.textContent = shareUrl;
+
+        // Also show viewer link below for convenience
+        if (!document.getElementById('viewer-link')) {
+          const viewerLinkP = document.createElement('p');
+          viewerLinkP.className = 'mt-2 text-gray-700';
+          viewerLinkP.innerHTML =
+            'To view the shared location, open this link in your browser: <a id="viewer-link" class="text-blue-600 underline" target="_blank" href="' +
+            viewUrl +
+            '">' +
+            viewUrl +
+            '</a>';
+          linkContainer.appendChild(viewerLinkP);
+        } else {
+          const viewerLink = document.getElementById('viewer-link');
+          viewerLink.href = viewUrl;
+          viewerLink.textContent = viewUrl;
+        }
+      });
+    }
+  </script>
+ </body>
+</html>
